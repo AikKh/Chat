@@ -1,4 +1,5 @@
 import socket, threading
+from Cesar import Cesar
 
 def handle_messages(connection: socket.socket):
     
@@ -36,6 +37,9 @@ def client() -> None:
 
             if msg == 'quit':
                 break
+
+            encoded_message = Cesar()
+            msg = encoded_message.encrypt(msg, 1)
 
             socket_instance.send(msg.encode())
 

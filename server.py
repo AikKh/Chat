@@ -1,6 +1,6 @@
 import socket, threading
+from Cesar import Cesar
 
-# Client's connections
 connections = []
 
 def handle_user_connection(connection: socket.socket, address: str) -> None:
@@ -9,12 +9,15 @@ def handle_user_connection(connection: socket.socket, address: str) -> None:
         try:
 
             msg = connection.recv(1024)
+            encoded_message = Cesar()
 
             if msg:
-                # Log message sent by user
-                print(f'{address[0]}:{address[1]} - {msg.decode()}')
                 
-                msg_to_send = f'From {address[0]}:{address[1]} - {msg.decode()}'
+                # decode socet message
+                msg = encoded_message.encrypt(msg.decode(), -1)
+                print(f'{address[0]}:{address[1]} - {msg}')
+                
+                msg_to_send = f'From {address[0]}:{address[1]} - {msg}'
                 broadcast(msg_to_send, connection)
 
             else:
@@ -28,6 +31,10 @@ def handle_user_connection(connection: socket.socket, address: str) -> None:
 
 
 def broadcast(message: str, connection: socket.socket) -> None:
+
+    encoded_message = Cesar()
+
+    message = encoded_message.encrypt(message, -1)
     
     for client_conn in connections:
         if client_conn != connection:
