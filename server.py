@@ -32,10 +32,6 @@ def handle_user_connection(connection: socket.socket, address: str) -> None:
 
 def broadcast(message: str, connection: socket.socket) -> None:
 
-    encoded_message = Cesar()
-
-    message = encoded_message.encrypt(message, -1)
-    
     for client_conn in connections:
         if client_conn != connection:
             try:
