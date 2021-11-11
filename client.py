@@ -1,5 +1,7 @@
 import socket, threading
-from Cesar import Cesar
+from Command import Command
+
+
 
 def handle_messages(connection: socket.socket):
     
@@ -17,8 +19,16 @@ def handle_messages(connection: socket.socket):
             print(f'Error handling message from server: {e}')
             connection.close()
             break
+        
+def correctMessage(msg: str):
+    count = 0
+    for l in msg:
+        if '-' == l:
+            count += 1
+            
+    return count > 0 and count < 2
 
-def client() -> None:
+def client():
     
     SERVER_ADDRESS = '127.0.0.1'
     SERVER_PORT = 12000
@@ -33,15 +43,23 @@ def client() -> None:
         print('Connected to chat!')
 
         while True:
+            
             msg = input()
 
             if msg == 'quit':
                 break
+            
+            if correctMessage(msg):
+            
+                commands = msg.split('-')
+ 
+                json = Command.CreateCommand(commands[0], commands[1])
 
-            encoded_message = Cesar()
-            msg = encoded_message.encrypt(msg, 1)
+                msg = json 
 
-            socket_instance.send(msg.encode())
+                socket_instance.send(msg.encode())
+            else:
+                print('Write correct command')
 
         socket_instance.close()
 

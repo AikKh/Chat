@@ -1,55 +1,93 @@
 import socket, threading
-from Cesar import Cesar
+import jsonpickle
+from Profile import Profile
 
-connections = []
+profiles = []
 
-def handle_user_connection(connection: socket.socket, address: str) -> None:
+def getProfileByConnection(connection):
+
+    for profile in profiles:
+        if profile._connection == connection:
+            return profile
+
+    return None
+
+def getProfileByNicname(nickname):
+    for profile in profiles:
+        if profile._nickname == nickname:
+            return profile
+        
+    return None
+
+def commandExecute(command: str, msg: str, connection: socket.socket):
+    profile = getProfileByConnection(connection)
+    
+    if command == 'reg':
+        profile.setNickname(msg)
+    elif command == '*':
+        msg_to_sent = 'From {} - {}'.format(profile._nickname, msg)
+        broadcast(msg_to_sent, connection)
+    else:
+        try:
+            msg_to_sent = 'From {} - {}'.format(profile._nickname, msg)
+            profile = getProfileByNicname(command)
+            if profile:
+                profile._connection.send(msg_to_sent.encode())
+            
+            else:
+                msg_to_sent = 'No such a nickname'
+                profile = getProfileByConnection(connection)
+                profile._connection.send(msg_to_sent.encode())
+        except Exception as e:
+            print('Error broadcasting message: {e}')
+            remove_connection(profile)
+            
+
+def handle_user_connection(connection: socket.socket, address: str):
 
     while True:
         try:
 
             msg = connection.recv(1024)
-            encoded_message = Cesar()
 
             if msg:
                 
                 # decode socet message
-                msg = encoded_message.encrypt(msg.decode(), -1)
-                print(f'{address[0]}:{address[1]} - {msg}')
+                jsonString = msg.decode()
+                commandObj = jsonpickle.decode(jsonString)
+                commandObj._msg = commandObj.getMessage()
                 
-                msg_to_send = f'From {address[0]}:{address[1]} - {msg}'
-                broadcast(msg_to_send, connection)
-
+                commandExecute(commandObj._cmd, commandObj._msg, connection)
+                
             else:
-                remove_connection(connection)
+                remove_connection(getProfileByConnection(connection))
                 break
 
         except Exception as e:
             print(f'Error to handle user connection: {e}')
-            remove_connection(connection)
+            remove_connection(getProfileByConnection(connection))
             break
 
 
-def broadcast(message: str, connection: socket.socket) -> None:
+def broadcast(message: str, connection: socket.socket):
 
-    for client_conn in connections:
-        if client_conn != connection:
+    for profile in profiles:
+        if profile._connection != connection:
             try:
-                client_conn.send(message.encode())
+                profile._connection.send(message.encode())
 
             except Exception as e:
                 print('Error broadcasting message: {e}')
-                remove_connection(client_conn)
+                remove_connection(profile)
 
 
-def remove_connection(conn: socket.socket) -> None:
+def remove_connection(prof: Profile):
 
-    if conn in connections:
-        conn.close()
-        connections.remove(conn)
+    prof._connection.close()
+    profiles.remove(prof)
 
 
-def server() -> None:
+def server():
 
     LISTENING_PORT = 12000
     
@@ -64,15 +102,18 @@ def server() -> None:
         while True:
 
             socket_connection, address = socket_instance.accept()
-            connections.append(socket_connection)
+            
+            profile = Profile(socket_connection)
+            profiles.append(profile)
+            
             threading.Thread(target=handle_user_connection, args=[socket_connection, address]).start()
 
     except Exception as e:
         print(f'An error has occurred when instancing socket: {e}')
     finally:
-        if len(connections) > 0:
-            for conn in connections:
-                remove_connection(conn)
+        if len(profiles) > 0:
+            for prof in profiles:
+                remove_connection(prof)
 
         socket_instance.close()
 
